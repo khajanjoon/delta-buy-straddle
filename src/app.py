@@ -14,7 +14,6 @@ API_SECRET = "B5ALo5Mh8mgUREB6oGD4oyX3y185oElaz1LoU6Y3X5ZX0s8TvFZcX4YTVToJ"
 BASE_URL = "https://api.india.delta.exchange"
 
 STRIKE_INTERVAL = 200
-ITM_DISTANCE = 0
 ORDER_SIZE = 1
 CHECK_INTERVAL = 5
 PRICE_OFFSET = 100
@@ -27,12 +26,6 @@ delta_client = DeltaRestClient(
 )
 
 IST = timezone(timedelta(hours=5, minutes=30))
-
-# ---------- STRADDLE TRACKER ----------
-open_straddle = {
-    "call": None,
-    "put": None
-}
 
 # ---------- HELPERS ----------
 
@@ -49,6 +42,10 @@ def get_atm_strike(spot):
     return int(round(float(spot) / STRIKE_INTERVAL) * STRIKE_INTERVAL)
 
 
+def get_product_id(symbol):
+    return delta_client.get_product(symbol)["id"]
+
+
 def position_exists(product_id):
     pos = delta_client.get_position(product_id)
     if not pos:
@@ -56,71 +53,52 @@ def position_exists(product_id):
     return abs(float(pos.get("size", 0))) > 0
 
 
-def get_product_id(symbol):
-    return delta_client.get_product(symbol)["id"]
+def straddle_exists_for(atm, expiry):
+    """
+    Check if BOTH CALL & PUT exist
+    for SAME strike and SAME expiry
+    """
+    call_symbol = f"C-BTC-{atm}-{expiry}"
+    put_symbol  = f"P-BTC-{atm}-{expiry}"
 
+    try:
+        call_id = get_product_id(call_symbol)
+        put_id  = get_product_id(put_symbol)
+    except Exception:
+        return False
 
-def load_existing_position(symbol, product_id):
-    pos = delta_client.get_position(product_id)
-    if not pos:
-        return None
+    if position_exists(call_id) and position_exists(put_id):
+        return True
 
-    size = abs(float(pos.get("size", 0)))
-    if size == 0:
-        return None
+    return False
 
-    return {
-        "symbol": symbol,
-        "product_id": product_id,
-        "entry_price": float(pos["entry_price"]),
-        "qty": float(size)
-    }
 
 # ---------- MAIN ----------
 print("🚀 SELL STRADDLE BOT STARTED")
 
 while True:
     try:
+        # -------- MARKET DATA --------
         expiry = get_expiry()
 
         btc = delta_client.get_ticker("BTCUSD")
         spot = float(btc["spot_price"])
         atm = get_atm_strike(spot)
 
+        print(f"🔁 Spot {spot} | ATM {atm} | Expiry {expiry}")
+
+        # -------- CHECK EXISTING STRADDLE --------
+        if straddle_exists_for(atm, expiry):
+            print("✅ Existing STRADDLE found — skipping entry")
+            time.sleep(CHECK_INTERVAL)
+            continue
+
+        # -------- PLACE NEW STRADDLE --------
         call_symbol = f"C-BTC-{atm}-{expiry}"
         put_symbol  = f"P-BTC-{atm}-{expiry}"
 
         call_id = get_product_id(call_symbol)
         put_id  = get_product_id(put_symbol)
-
-        print(f"🔁 Monitoring ATM {atm} | Expiry {expiry}")
-
-        # ---------- STRIKE CHANGE / POSITION CHECK ----------
-        if open_straddle["call"] and open_straddle["put"]:
-            if not position_exists(open_straddle["call"]["product_id"]) \
-               or not position_exists(open_straddle["put"]["product_id"]):
-                print("⚠️ Old straddle closed — resetting")
-                open_straddle["call"] = None
-                open_straddle["put"]  = None
-
-        # ---------- EXISTING STRADDLE DETECTION ----------
-        if position_exists(call_id) and position_exists(put_id):
-            if not open_straddle["call"]:
-                open_straddle["call"] = load_existing_position(call_symbol, call_id)
-                open_straddle["put"]  = load_existing_position(put_symbol, put_id)
-                print("🔄 Existing STRADDLE detected")
-            time.sleep(CHECK_INTERVAL)
-            continue
-
-        # ---------- IF ALREADY TRACKING ----------
-        if open_straddle["call"]:
-            time.sleep(CHECK_INTERVAL)
-            continue
-
-        # ---------- PLACE NEW STRADDLE ----------
-        print(f"\n📊 Spot: {spot} | ATM: {atm}")
-        print(f"📞 CALL: {call_symbol}")
-        print(f"📉 PUT : {put_symbol}")
 
         call_ticker = delta_client.get_ticker(call_symbol)
         put_ticker  = delta_client.get_ticker(put_symbol)
@@ -149,21 +127,11 @@ while True:
         delta_client.batch_create(call_id, [call_order])
         delta_client.batch_create(put_id, [put_order])
 
-        open_straddle["call"] = {
-            "symbol": call_symbol,
-            "product_id": call_id,
-            "entry_price": float(call_price),
-            "qty": float(ORDER_SIZE)
-        }
-
-        open_straddle["put"] = {
-            "symbol": put_symbol,
-            "product_id": put_id,
-            "entry_price": float(put_price),
-            "qty": float(ORDER_SIZE)
-        }
-
-        print(f"✅ STRADDLE SOLD | CALL @ {call_price} | PUT @ {put_price}")
+        print(
+            f"✅ NEW STRADDLE SOLD | "
+            f"{call_symbol} @ {call_price} | "
+            f"{put_symbol} @ {put_price}"
+        )
 
     except Exception as e:
         print("❌ Error:", e)
