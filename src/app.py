@@ -46,7 +46,7 @@ def get_expiry():
 
 
 def get_atm_strike(spot):
-    return int(round(spot / STRIKE_INTERVAL) * STRIKE_INTERVAL)
+    return int(round(float(spot) / STRIKE_INTERVAL) * STRIKE_INTERVAL)
 
 
 def position_exists(product_id):
@@ -73,7 +73,7 @@ def load_existing_position(symbol, product_id):
         "symbol": symbol,
         "product_id": product_id,
         "entry_price": float(pos["entry_price"]),
-        "qty": size
+        "qty": float(size)
     }
 
 # ---------- MAIN ----------
@@ -89,11 +89,11 @@ while True:
             call_ltp = float(call_ticker["mark_price"])
             put_ltp  = float(put_ticker["mark_price"])
 
-            call_entry = open_straddle["call"]["entry_price"]
-            put_entry  = open_straddle["put"]["entry_price"]
+            call_entry = float(open_straddle["call"]["entry_price"])
+            put_entry  = float(open_straddle["put"]["entry_price"])
 
-            call_qty = open_straddle["call"]["qty"]
-            put_qty  = open_straddle["put"]["qty"]
+            call_qty = float(open_straddle["call"]["qty"])
+            put_qty  = float(open_straddle["put"]["qty"])
 
             call_pnl = (call_entry - call_ltp) * call_qty
             put_pnl  = (put_entry - put_ltp) * put_qty
@@ -159,14 +159,14 @@ while True:
             product_id=call_id,
             size=ORDER_SIZE,
             side="sell",
-            price=call_price
+            price=float(call_price)
         )
 
         put_order = create_order_format(
             product_id=put_id,
             size=ORDER_SIZE,
             side="sell",
-            price=put_price
+            price=float(put_price)
         )
 
         delta_client.batch_create(call_id, [call_order])
@@ -175,15 +175,15 @@ while True:
         open_straddle["call"] = {
             "symbol": call_symbol,
             "product_id": call_id,
-            "entry_price": call_price,
-            "qty": ORDER_SIZE
+            "entry_price": float(call_price),
+            "qty": float(ORDER_SIZE)
         }
 
         open_straddle["put"] = {
             "symbol": put_symbol,
             "product_id": put_id,
-            "entry_price": put_price,
-            "qty": ORDER_SIZE
+            "entry_price": float(put_price),
+            "qty": float(ORDER_SIZE)
         }
 
         print(f"✅ STRADDLE SOLD | CALL @ {call_price} | PUT @ {put_price}")
