@@ -8,8 +8,8 @@ from delta_rest_client import (
 )
 
 # ================= CONFIG =================
-API_KEY = "YOUR_API_KEY"
-API_SECRET = "YOUR_API_SECRET"
+API_KEY = "TcwdPNNYGjjgkRW4BRIAnjL7z5TLyJ"
+API_SECRET = "B5ALo5Mh8mgUREB6oGD4oyX3y185oElaz1LoU6Y3X5ZX0s8TvFZcX4YTVToJ"
 
 BASE_URL = "https://api.india.delta.exchange"
 
@@ -23,8 +23,8 @@ MIN_MARK_PRICE = 10000
 
 delta_client = DeltaRestClient(
     base_url=BASE_URL,
-    api_key="TcwdPNNYGjjgkRW4BRIAnjL7z5TLyJ",
-    api_secret="B5ALo5Mh8mgUREB6oGD4oyX3y185oElaz1LoU6Y3X5ZX0s8TvFZcX4YTVToJ"
+    api_key=API_KEY,
+    api_secret=API_SECRET
 )
 
 IST = timezone(timedelta(hours=5, minutes=30))
