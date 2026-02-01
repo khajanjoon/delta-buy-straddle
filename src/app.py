@@ -13,12 +13,12 @@ API_SECRET = "B5ALo5Mh8mgUREB6oGD4oyX3y185oElaz1LoU6Y3X5ZX0s8TvFZcX4YTVToJ"
 
 BASE_URL = "https://api.india.delta.exchange"
 
-STRIKE_INTERVAL = 1000
-STRIKE_DISTANCE = 8000
+STRIKE_INTERVAL = 100
+STRIKE_DISTANCE = 500
 ORDER_SIZE = 1
 CHECK_INTERVAL = 5
-PRICE_OFFSET = 500
-MIN_MARK_PRICE = 10000
+PRICE_OFFSET = 50
+MIN_MARK_PRICE = 500
 # =========================================
 
 delta_client = DeltaRestClient(
@@ -58,12 +58,12 @@ while True:
     try:
         expiry = get_expiry()
 
-        btc = delta_client.get_ticker("BTCUSD")
+        btc = delta_client.get_ticker("ETHUSD")
         spot = float(btc["spot_price"])
         atm = get_atm_strike(spot)
 
         call_strike = atm - STRIKE_DISTANCE
-        call_symbol = f"C-BTC-{call_strike}-{expiry}"
+        call_symbol = f"C-ETH-{call_strike}-{expiry}"
 
         print(f"\n🔁 Spot {spot} | ATM {atm}")
         print(f"📌 CALL {call_strike} | Expiry {expiry}")
